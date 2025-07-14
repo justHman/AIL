@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+import os 
+from data_processing import create_item_similarity_matrix 
 
 # ===================================================================
 # 1. MÔ HÌNH PHI CÁ NHÂN HÓA (DÙNG CHO NGƯỜI DÙNG MỚI)
@@ -28,7 +30,12 @@ def get_popular_items(ratings_df, top_n=10, min_ratings=5):
 # 2. MÔ HÌNH LỌC DỰA TRÊN NỘI DUNG (CONTENT-BASED)
 # ===================================================================
 
-def get_content_based_recs(user_id, ratings_df, item_content_df, item_similarity_matrix, n=10):
+def get_content_based_recs(
+        user_id, ratings_df, item_content_df, item_similarity_matrix, 
+        n=10, 
+        path_simi_matrix='data\similarity_matrix\item-item.csv',
+        path_data='data\captone_data.csv'
+):
     """
     Hàm này làm gì:
         Gợi ý các item có nội dung (content) tương tự với những item mà
@@ -45,6 +52,14 @@ def get_content_based_recs(user_id, ratings_df, item_content_df, item_similarity
     Trả ra:
         - list: Danh sách các item ID được gợi ý.
     """
+    if os.path.exists(path_simi_matrix):
+        simi_matrix = pd.read_csv(path_simi_matrix)
+    else:
+        path = create_item_similarity_matrix(path_data, path_folder='data\similarity_matrix')
+        simi_matrix = pd.read_csv(path)
+    
+
+
     # Logic ví dụ: Tìm item user thích nhất -> tìm item tương tự nhất từ ma trận
     return ['item_id_A', 'item_id_B', ...]
 

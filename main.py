@@ -3,8 +3,8 @@ import pandas as pd
 from src.recommender import HybridRecommender
 
 # 1. Tải dữ liệu
-ratings_data = pd.read_csv('data/ratings.csv')
-items_data = pd.read_csv('data/items.csv')
+ratings_data = pd.read_csv('data\captone_data.csv')
+items_data = pd.read_csv('data\captone_data.csv')
 
 # 2. Khởi tạo hệ thống (bước này có thể mất thời gian để huấn luyện)
 recommender_engine = HybridRecommender(ratings_data, items_data)
