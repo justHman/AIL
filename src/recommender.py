@@ -87,7 +87,7 @@ class HybridRecommender:
         
         if new_item_id not in self.items_df['item'].tolist():
              return {'error': 'Item content not found.'}
-
+    
         # Tìm các users phù hợp dựa trên content
         # ... (logic chi tiết sẽ được cài đặt ở đây) ...
         

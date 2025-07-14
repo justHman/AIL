@@ -27,7 +27,7 @@ def get_popular_items(ratings_df, top_n=10, min_ratings=5):
     return ['item_id_1', 'item_id_2', ...]
 
 # ===================================================================
-# 2. MÔ HÌNH LỌC DỰA TRÊN NỘI DUNG (CONTENT-BASED)
+# 2. MÔ HÌNH LỌC DỰA TRÊN NỘI DUNG (CONTENT-BASED / ITEM-ITEM) 
 # ===================================================================
 
 def get_content_based_recs(
