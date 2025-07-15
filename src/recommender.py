@@ -53,16 +53,17 @@ class HybridRecommender:
         items_rated = self.ratings_df[self.ratings_df['user'] == user_id]['item'].tolist()
 
         # Lấy gợi ý từ nhiều mô hình khác nhau
-        svd_recs = models.get_matrix_factorization_recs(
-            user_id, self.svd_predicted_ratings, items_rated, n
-        )
+        # svd_recs = models.get_matrix_factorization_recs(
+        #     user_id, self.svd_predicted_ratings, items_rated, n
+        # )
         item_cf_recs = models.get_item_item_recs(
             user_id, self.ratings_df, self.cf_item_similarity_matrix, n
         )
 
         # Logic kết hợp (hybrid): ví dụ, kết hợp và xếp hạng lại 2 danh sách trên
-        hybrid_recs = list(dict.fromkeys(svd_recs + item_cf_recs))[:n]
-
+        # hybrid_recs = list(dict.fromkeys(svd_recs + item_cf_recs))[:n]
+        hybrid_recs = list(dict.fromkeys(item_cf_recs))[:n]
+        print(hybrid_recs)
         return {'recommendations': hybrid_recs, 'strategy': 'hybrid_svd_item_cf'}
 
 
