@@ -27,5 +27,7 @@ print(recs_for_user_2)
 # Kịch bản 3: Gợi ý một item mới cho ai
 new_item = 'NEW0101EN' # Một item mới (giả sử đã có trong items.csv)
 users_to_target = recommender_engine.recommend_for_new_item(new_item, n_users=5)
-print(f"\Nên gợi ý item mới '{new_item}' cho những người dùng sau:")
+print(f"\nNên gợi ý item mới '{new_item}' cho những người dùng sau:")
 print(users_to_target)
+
+items_to_target = recommender_engine.recommend_for_new_item(new_item, n_users=5)

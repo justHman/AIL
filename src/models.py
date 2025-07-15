@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import os 
-from data_processing import create_item_similarity_matrix 
+from src.data_processing import create_item_similarity_matrix 
 
 # ===================================================================
 # 1. MÔ HÌNH PHI CÁ NHÂN HÓA (DÙNG CHO NGƯỜI DÙNG MỚI)
