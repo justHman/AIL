@@ -1,0 +1,103 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Cấu hình môi trường ảo
+.env
+.venv/
+venv/
+ENV/
+env.bak/
+env/
+
+# VS Code settings
+.vscode/
+
+# Jupyter Notebook checkpoint
+.ipynb_checkpoints/
+
+# Log & cache
+*.log
+*.sqlite3
+*.db
+*.db3
+*.pkl
+*.joblib
+*.h5
+*.hdf5
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.tflite
+
+# Dataset, export hoặc đầu ra tạm thời
+*.csv
+*.tsv
+*.xlsx
+*.xls
+*.json
+*.xml
+*.zip
+*.tar.gz
+*.npy
+*.npz
+*.wav
+*.flac
+*.mp3
+*.mp4
+*.avi
+
+# Thư mục output/model/checkpoint
+outputs/
+models/
+checkpoints/
+runs/
+logs/
+weights/
+results/
+
+# Jupyter notebook output
+*.out
+*.nbconvert.*
+
+# MacOS hệ thống
+.DS_Store
+
+# Python egg
+*.egg-info/
+*.egg
+
+# PyInstaller
+*.spec
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pytest
+.pytest_cache/
+
+# Coverage reports
+htmlcov/
+coverage.xml
+*.cover
+*.py,cover
+.cache
+nosetests.xml
+test-results/
+
+# Docker
+docker-compose.override.yml
+docker-compose.*.yml
+
+# Node.js (nếu có frontend)
+node_modules/
+
+# Các file riêng của cá nhân
+secret.yaml
+*.key
+*.pem
+*.crt
