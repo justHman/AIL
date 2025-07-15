@@ -1,5 +1,11 @@
 import pandas as pd
 from . import models 
+import os
+from src.utils import load_config
+from src.data_processing import split_item, create_similarity_matrix
+
+config = load_config()
+PATH_SIM_MATRIX = config['path_sim_matrix']
 
 class Recommender:
     def __init__(self, df):
@@ -10,8 +16,18 @@ class Recommender:
 
         # Các thành phần được tính toán trước
         self.svd_predicted_ratings = None # Sẽ được tính khi init
-        self.content_similarity_matrix = None # Sẽ được tính khi init
         self.cf_item_similarity_matrix = None # Sẽ được tính khi init
+
+        if os.path.exists(PATH_SIM_MATRIX):
+            sim_matrix = pd.read_csv(PATH_SIM_MATRIX)
+        else:
+            items = df['item'].unique()
+            items_processed = [split_item(item) for item in items]
+            sim_matrix, vectors = create_similarity_matrix(items_processed, index=items, columns=items, return_vector=True)
+        
+        self.sim_matrix = sim_matrix
+        self.vector_items = vectors
+
         print("Recommender is ready.")
     
     def recommend(self, user_id, n=10, aglorithm='hybrid'):
@@ -34,19 +50,12 @@ class Recommender:
             recs = list(dict.fromkeys(svd_recs + item_cf_recs))[:n]
 
         elif aglorithm == 'iiCB':
-            recs = models.iiCB(user_id, n)
+            model = models.iiCB(self.df, vectors=self.vector_items)
+            recs = model.reccomend(user_id, n)
 
-        elif aglorithm == 'uuCB':
-            pass
-
-        return {'recommendations': recs, 'strategy': 'hybrid_svd_item_cf'}
+        return {'recommendations': recs, 'strategy': aglorithm}
 
 if __name__ == '__main__':
     df = pd.read_csv('data\captone_data.csv')
     recommender_engine = Recommender(df)
-
-    user_1 = 1889878 # Một user đã có trong hệ thống
-    recs_for_user_1 = recommender_engine.recommend(user_1, n=5, aglorithm='knnCF')
-    print(f"Gợi ý cho người dùng cũ {user_1}:")
-    print(recs_for_user_1)
    

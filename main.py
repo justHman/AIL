@@ -1,16 +1,15 @@
 import pandas as pd
 from src.recommender import Recommender
+from src.models import iiCB
 
 df = pd.read_csv('data\captone_data.csv')
 recommender_engine = Recommender(df)
 
-user_1 = 1889878 # Một user đã có trong hệ thống
-recs_for_user_1 = recommender_engine.recommend(user_1, n=5, aglorithm='knnCF')
-print(recs_for_user_1)
+# df2 = pd.read_csv('data\captone_data.csv')
+model = iiCB(df, vectors=recommender_engine.vector_items)
 
-user_2 = 9999999 # Một user chưa từng có
-recs_for_user_2 = recommender_engine.recommend(user_2, n=5)
-print(recs_for_user_2)
+recs = model.reccomend(user_id=1889878, n=10, return_result=False)
+print(recs)
 
 exit(0)
 
