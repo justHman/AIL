@@ -1,7 +1,8 @@
 import pandas as pd
 import numpy as np
 import os 
-from data_processing import create_item_similarity_matrix 
+from sklearn.neighbors import NearestNeighbors
+from src.data_processing import create_item_similarity_matrix 
 
 # ===================================================================
 # 1. MÔ HÌNH PHI CÁ NHÂN HÓA (DÙNG CHO NGƯỜI DÙNG MỚI)
@@ -21,10 +22,19 @@ def get_popular_items(ratings_df, top_n=10, min_ratings=5):
     Trả ra:
         - list: Một danh sách chứa các item ID phổ biến nhất.
     """
+    item_stats = ratings_df.groupby('item').agg(
+        count=('rating', 'count'),
+        avg_rating=('rating', 'mean')
+    )
+    
+    popular_items = item_stats[item_stats['count'] >= min_ratings]
+    popular_items = popular_items.sort_values(by=['avg_rating', 'count'], ascending=[False, False]).head(top_n)
+    print(popular_items)
+    return popular_items.index.tolist()
+
     # Logic ví dụ: Đếm số lần xuất hiện của mỗi item
     # item_counts = ratings_df['item'].value_counts()
     # ... lọc và trả về top N ...
-    return ['item_id_1', 'item_id_2', ...]
 
 # ===================================================================
 # 2. MÔ HÌNH LỌC DỰA TRÊN NỘI DUNG (CONTENT-BASED)
@@ -67,7 +77,7 @@ def get_content_based_recs(
 # 3. MÔ HÌNH LỌC CỘNG TÁC (COLLABORATIVE FILTERING)
 # ===================================================================
 
-def get_item_item_recs(user_id, ratings_df, item_similarity_matrix, n=10):
+def get_item_item_recs(user_id, ratings_df, item_similarity_matrix, n=10, k_neighbors=8):
     """
     Hàm này làm gì:
         Thực hiện Lọc cộng tác Item-Item. Gợi ý các item tương tự với những
@@ -82,7 +92,44 @@ def get_item_item_recs(user_id, ratings_df, item_similarity_matrix, n=10):
     Trả ra:
         - list: Danh sách các item ID được gợi ý.
     """
-    return ['item_id_X', 'item_id_Y', ...]
+    train_matrix = ratings_df.pivot_table(index='user', columns='item', values='rating').fillna(0)
+
+    if user_id not in train_matrix.index:
+        print(f"User '{user_id}' không tồn tại trong dữ liệu.")
+        return []
+
+    item_user_matrix = train_matrix.T
+    
+    user_ratings = train_matrix.loc[user_id]
+    rated_items = user_ratings[user_ratings > 0].index.tolist()
+    unrated_items = train_matrix.columns.difference(rated_items)
+
+    knn_model = NearestNeighbors(metric='cosine', algorithm='brute', n_neighbors=k_neighbors + 1)
+    knn_model.fit(item_user_matrix.values)
+
+    predictions = {}
+
+    for item in unrated_items:
+        if item not in item_user_matrix.index:
+            continue
+
+        item_idx = item_user_matrix.index.get_loc(item)
+        distances, indices = knn_model.kneighbors([item_user_matrix.iloc[item_idx]], n_neighbors=k_neighbors + 1)
+
+        neighbors = item_user_matrix.index[indices[0][1:]]
+        neighbor_ratings = user_ratings[neighbors]
+        neighbor_ratings = neighbor_ratings[neighbor_ratings > 0]
+
+        if len(neighbor_ratings) > 0:
+            predicted_rating = neighbor_ratings.mean()
+        else:
+            predicted_rating = user_ratings[user_ratings > 0].mean() if user_ratings[user_ratings > 0].any() else 2.5
+
+        predictions[item] = predicted_rating
+
+    sorted_preds = sorted(predictions.items(), key=lambda x: x[1], reverse=True)
+    recommended_items = [item for item, _ in sorted_preds[:n]]
+    return recommended_items
 
 
 def get_matrix_factorization_recs(user_id, predicted_ratings_df, items_rated_by_user, n=10):
