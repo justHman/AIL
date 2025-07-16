@@ -37,6 +37,66 @@ def PB(df, top_n=10, return_df=False):
 # ===================================================================
 # 2. MÔ HÌNH LỌC DỰA TRÊN NỘI DUNG (CONTENT-BASED / ITEM-ITEM) 
 # ===================================================================
+class Ridge_iiCB:
+    def __init__(self, df):
+        self.df = df
+
+        self.items = df['item'].unique()
+        self.item_map = {item: i for i, item in enumerate(self.items)}
+        
+        self.users = df['user'].unique()
+        self.user_map = {user: i for i, user in enumerate(self.users)}
+        
+        self.X = None
+        self.W = None
+        self.b = None            
+        self.y = None
+
+    def train(self, vectors):
+        self.X = vectors
+        self.W = np.zeros((vectors.shape[1], len(self.users))) # 83 x 33901
+        self.b = np.zeros((1, len(self.users)))                # 1  x 33901
+
+        for i, user in enumerate(self.users):
+            id_items, ratings = get_items_rated_by_user(df, user, self.item_map)
+            X_train = self.X[id_items, :]
+
+            rg = Ridge(alpha=0.01, fit_intercept=True)
+            rg.fit(X_train, ratings)
+            
+            self.W[:, i] = rg.coef_
+            self.b[0, i] = rg.intercept_
+            
+        self.y = self.X @ self.W + self.b
+
+    def predict(self, item, user_id):
+        return self.y[self.item_map[item], self.user_map[user_id]]
+
+    def reccomend(self, user_id, n, return_rating=False):
+        rated_items = set(self.df[self.df['user'] == user_id]['item'])
+        all_items = list(self.item_map.keys())
+        unrated_items = [item for item in all_items if item not in rated_items]
+
+        item_scores = [(item, float(self.predict(item, user_id))) for item in unrated_items]
+
+        item_scores.sort(key=lambda x: x[1], reverse=True)
+
+        if return_rating:
+            return item_scores[:n]
+        return [item for item, rating in item_scores[:n]]
+    
+    def evaluate(self, df):
+        se = 0
+        cnt = 0
+        users = self.df['user'].unique()
+        for i, user in enumerate(users):
+            id_items, ratings = get_items_rated_by_user(df, user, self.item_map)
+            ratings_pred = self.y[id_items, i]
+            e = ratings - ratings_pred 
+            se += (e*e).sum(axis = 0)
+            cnt += e.size 
+        return math.sqrt(se/cnt)
+         
 class iiCB:
     def __init__(self,  df, sim_matrix=None, vectors=None):
         self.df = df
@@ -93,17 +153,7 @@ class iiCB:
     def predict(self, item, user_id):
         return self.Yhat[self.item_map[item], self.user_map[user_id]]
 
-    def evaluate(self, Yhat, rates):
-        se = 0
-        cnt = 0
-        users = self.df['user'].unique()
-        for i, user in enumerate(users):
-            ids, scores_truth = get_items_rated_by_user(rates, user, self.item_map)
-            scores_pred = Yhat[ids, i]
-            e = scores_truth - scores_pred 
-            se += (e*e).sum(axis = 0)
-            cnt += e.size 
-        return math.sqrt(se/cnt)
+    
 
 # ===================================================================
 # 3. MÔ HÌNH LỌC CỘNG TÁC (COLLABORATIVE FILTERING)

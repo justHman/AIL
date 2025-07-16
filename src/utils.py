@@ -9,7 +9,6 @@ def get_items_rated_by_user(df, user_id, item_id_map):
     item_ids = user_rated['item'].to_numpy()
     ratings = user_rated['rating'].to_numpy()
 
-    # map item_id → index dùng item_id_map
     item_indices = np.array([item_id_map[item] for item in item_ids])
 
     return item_indices, ratings

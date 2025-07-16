@@ -10,12 +10,14 @@ def create_similarity_matrix(strings, index, columns, return_vector=False):
 
     sm_matrix = cosine_similarity(vecs)
     
-    if return_vector:
-        return pd.DataFrame(sm_matrix, index=index, columns=columns), vecs.toarray()
-    
     return pd.DataFrame(sm_matrix, index=index, columns=columns)
 
+def vectorize_items(processed_items):
+    vectorizer = TfidfVectorizer()
+    vecs = vectorizer.fit_transform(processed_items) 
 
+    return pd.DataFrame(vecs.toarray(), index=[item.replace(' ', '') for item in processed_items])
+                        
 def split_item(item):
     # Các trường hợp đặc biệt cần xử lý thủ công
     exceptions = {
@@ -42,10 +44,9 @@ def split_item(item):
     return ' '.join(filter(None, tokens))
 
 if __name__ == '__main__':
-    from utils import create_similarity_matrix
     path = r'data\captone_data.csv'
     df = pd.read_csv(path)
-    series = df['item'].unique()
-    strings = preprocess_items(df)
-    sm_matrix = create_similarity_matrix(strings, index=series, columns=series)
-    print(sm_matrix)
+    series = df['item'].apply(split_item).unique()
+    print(series)
+    vecs = vectorize_items(series)
+    print(vecs.loc['CC0101EN'])
