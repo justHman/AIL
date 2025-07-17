@@ -1,8 +1,11 @@
 import pandas as pd
 import numpy as np
 import os 
+import math
 from sklearn.neighbors import NearestNeighbors
 from src.data_processing import create_item_similarity_matrix 
+from src.utils import get_items_rated_by_user
+from sklearn.linear_model import Ridge
 
 # ===================================================================
 # 1. MÔ HÌNH PHI CÁ NHÂN HÓA (DÙNG CHO NGƯỜI DÙNG MỚI)
@@ -37,41 +40,67 @@ def get_popular_items(ratings_df, top_n=10, min_ratings=5):
     # ... lọc và trả về top N ...
 
 # ===================================================================
-# 2. MÔ HÌNH LỌC DỰA TRÊN NỘI DUNG (CONTENT-BASED)
+# 2. MÔ HÌNH LỌC DỰA TRÊN NỘI DUNG (CONTENT-BASED / ITEM-ITEM) 
 # ===================================================================
+class Ridge_iiCB:
+    def __init__(self, df):
+        self.df = df
 
-def get_content_based_recs(
-        user_id, ratings_df, item_content_df, item_similarity_matrix, 
-        n=10, 
-        path_simi_matrix='data\similarity_matrix\item-item.csv',
-        path_data='data\captone_data.csv'
-):
-    """
-    Hàm này làm gì:
-        Gợi ý các item có nội dung (content) tương tự với những item mà
-        người dùng đã thích trong quá khứ. Hữu ích cho việc gợi ý item mới
-        hoặc khi dữ liệu rating còn thưa.
+        self.items = df['item'].unique()
+        self.item_map = {item: i for i, item in enumerate(self.items)}
+        
+        self.users = df['user'].unique()
+        self.user_map = {user: i for i, user in enumerate(self.users)}
+        
+        self.X = None
+        self.W = None
+        self.b = None            
+        self.y = None
 
-    Truyền vào:
-        - user_id (int/str): ID của người dùng cần gợi ý.
-        - ratings_df (pd.DataFrame): DataFrame chứa ['user', 'item', 'rating'].
-        - item_content_df (pd.DataFrame): DataFrame nội dung item ['item', 'genre', ...].
-        - item_similarity_matrix (np.array): Ma trận tương đồng giữa các item (tính trước bằng cosine_similarity).
-        - n (int): Số lượng item cần gợi ý.
+    def train(self, vectors):
+        self.X = vectors
+        self.W = np.zeros((vectors.shape[1], len(self.users))) # 83 x 33901
+        self.b = np.zeros((1, len(self.users)))                # 1  x 33901
 
-    Trả ra:
-        - list: Danh sách các item ID được gợi ý.
-    """
-    if os.path.exists(path_simi_matrix):
-        simi_matrix = pd.read_csv(path_simi_matrix)
-    else:
-        path = create_item_similarity_matrix(path_data, path_folder='data\similarity_matrix')
-        simi_matrix = pd.read_csv(path)
+        for i, user in enumerate(self.users):
+            id_items, ratings = get_items_rated_by_user(df, user, self.item_map)
+            X_train = self.X[id_items, :]
+
+            rg = Ridge(alpha=0.01, fit_intercept=True)
+            rg.fit(X_train, ratings)
+            
+            self.W[:, i] = rg.coef_
+            self.b[0, i] = rg.intercept_
+            
+        self.y = self.X @ self.W + self.b
+
+    def predict(self, item, user_id):
+        return self.y[self.item_map[item], self.user_map[user_id]]
+
+    def recomend(self, user_id, n, return_rating=False):
+        rated_items = set(self.df[self.df['user'] == user_id]['item'])
+        all_items = list(self.item_map.keys())
+        unrated_items = [item for item in all_items if item not in rated_items]
+
+        item_scores = [(item, float(self.predict(item, user_id))) for item in unrated_items]
+
+        item_scores.sort(key=lambda x: x[1], reverse=True)
+
+        if return_rating:
+            return item_scores[:n]
+        return [item for item, rating in item_scores[:n]]
     
-
-
-    # Logic ví dụ: Tìm item user thích nhất -> tìm item tương tự nhất từ ma trận
-    return ['item_id_A', 'item_id_B', ...]
+    def evaluate(self, df):
+        se = 0
+        cnt = 0
+        users = self.df['user'].unique()
+        for i, user in enumerate(users):
+            id_items, ratings = get_items_rated_by_user(df, user, self.item_map)
+            ratings_pred = self.y[id_items, i]
+            e = ratings - ratings_pred 
+            se += (e*e).sum(axis = 0)
+            cnt += e.size 
+        return math.sqrt(se/cnt)
 
 # ===================================================================
 # 3. MÔ HÌNH LỌC CỘNG TÁC (COLLABORATIVE FILTERING)
@@ -149,4 +178,17 @@ def get_matrix_factorization_recs(user_id, predicted_ratings_df, items_rated_by_
         - list: Danh sách các item ID được gợi ý.
     """
     # Logic ví dụ: Sắp xếp các rating dự đoán cho user, loại bỏ item đã xem
-    return ['item_id_SVD1', 'item_id_SVD2', ...]
+    if user_id not in predicted_ratings_df.index:
+        print(f"User '{user_id}' không tồn tại trong dữ liệu dự đoán.")
+        return []
+
+    # Lấy toàn bộ rating dự đoán của user đó
+    user_predicted_ratings = predicted_ratings_df.loc[user_id]
+
+    # Loại bỏ các item mà user đã đánh giá
+    filtered_ratings = user_predicted_ratings.drop(labels=items_rated_by_user, errors='ignore')
+
+    # Sắp xếp theo điểm dự đoán giảm dần
+    recommended_items = filtered_ratings.sort_values(ascending=False).head(n).index.tolist()
+
+    return recommended_items

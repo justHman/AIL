@@ -1,5 +1,6 @@
 import pandas as pd
 from . import models # Import các mô hình từ file models.py
+from sklearn.metrics.pairwise import cosine_similarity
 
 class HybridRecommender:
     def __init__(self, ratings_df, items_df):
@@ -81,15 +82,30 @@ class HybridRecommender:
             - list: Danh sách các user ID là ứng viên tốt nhất để nhận gợi ý
                     về item mới này.
         """
-        # Logic:
-        # 1. Dùng Content-Based để tìm các item cũ tương tự nhất với `new_item_id`.
-        # 2. Tìm những người dùng đã đánh giá cao các item tương tự đó.
-        # 3. Trả về danh sách những người dùng này.
-        
-        if new_item_id not in self.items_df['item'].tolist():
-             return {'error': 'Item content not found.'}
+            # Kiểm tra xem item content có tồn tại không
+        if new_item_id not in self.items_df['item'].values:
+            return {'error': 'Item content not found.'}
 
-        # Tìm các users phù hợp dựa trên content
-        # ... (logic chi tiết sẽ được cài đặt ở đây) ...
+        # Vector nội dung cho item mới
+        new_item_vector = self.items_df[self.items_df['item'] == new_item_id].drop(columns=['item']).values
+
+        # Ma trận vector nội dung cho tất cả item cũ
+        item_features_matrix = self.items_df.drop(columns=['item']).set_index('item')
         
-        return ['user_id_101', 'user_id_202', ...]
+        # Tính độ tương đồng giữa item mới với toàn bộ item cũ
+        similarities = cosine_similarity(new_item_vector, item_features_matrix.values)[0]
+        
+        # Gán index tương ứng với item
+        similarity_series = pd.Series(similarities, index=item_features_matrix.index)
+        similar_items = similarity_series.sort_values(ascending=False).head(10).index.tolist()
+
+        # Tìm tất cả người dùng đã đánh giá các item tương tự này với điểm cao
+        similar_ratings = self.ratings_df[
+            (self.ratings_df['item'].isin(similar_items)) &
+            (self.ratings_df['rating'] >= 3)  # giả sử 3 là "thích"
+        ]
+
+        # Đếm số lần mỗi user đánh giá cao các item tương tự
+        top_users = similar_ratings['user'].value_counts().head(n_users).index.tolist()
+
+        return top_users
