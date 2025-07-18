@@ -79,16 +79,16 @@ class Ridge_iiCB:
             return
         
         rated_items = set(self.df[self.df['user'] == user]['item'])
-        all_items = list(self.items)
-        unrated_items = [item for item in all_items if item not in rated_items]
+        all_items = set(self.items)
+        unrated_items = all_items - rated_items
 
-        item_scores = [(item, float(self.predict(item, user))) for item in unrated_items]
+        item_scores = [(item, float(self.predict(item, user)), len(df[df['item'] == item])) for item in unrated_items]
 
-        item_scores.sort(key=lambda x: x[1], reverse=True)
+        item_scores.sort(key=lambda x: (x[1], x[2]), reverse=True)
 
         if return_rating:
             return item_scores[:n]
-        return [item for item, rating in item_scores[:n]]
+        return [item for item, rating, quantity in item_scores[:n]]
     
     def evaluate(self, df):
         se = 0

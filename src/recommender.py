@@ -5,8 +5,7 @@ from src.utils import load_config
 from src.data_processing import split_item, create_similarity_matrix, vectorize_items
 
 config = load_config()
-PATH_SIM_MATRIX = config['path_sim_matrix']
-PATH_VECTORS = config['path_vectors']
+PATH_SIM_MATRIX = config['path_sim_matrix']\
 
 class Recommender:
     def __init__(self, df):
