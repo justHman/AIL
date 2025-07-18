@@ -140,42 +140,90 @@ class iiCB:
 # ===================================================================
 # 3. MÔ HÌNH LỌC CỘNG TÁC (COLLABORATIVE FILTERING)
 # ===================================================================
+class knnCF:
+    def __init__(self, sparse, iiCF_simi_matrix, utility_norm):
+        self.sparse = sparse
 
-def knnCF(user_id, n, ratings_df, k_neighbors=8):
-    train_matrix = ratings_df.pivot_table(index='user', columns='item', values='rating').fillna(0)
+        self.users = sorted(sparse['user'].unique())
+        self.user_map = {user: i for i, user in enumerate(self.users)}
 
-    item_user_matrix = train_matrix.T
+        self.items = sparse['item'].unique()
+
+        self.iiCF_simi_matrix = iiCF_simi_matrix
+        self.utility_norm = utility_norm
+
+
+    def predict(self, user, item, k=2):
+        if item not in self.items or user not in self.users:
+            return 0
+        
+        items_rated_user = self.sparse[self.sparse['user'] == user]['item'].unique()
+        if len(items_rated_user) == 0:
+            return 0 
+        
+        sim_scores = self.iiCF_simi_matrix.loc[item, items_rated_user]
+        nearest_s = sim_scores.sort_values(ascending=False).head(k)
+
+        # Lấy rating của người dùng cho item
+        ratings = []
+        for i in nearest_s.index:
+            r = self.utility_norm.loc[i, user]
+            ratings.append(r)
+        ratings = np.array(ratings)
+
+        pred_rating = np.dot(ratings, nearest_s.values) / (np.abs(nearest_s.values).sum() + 1e-8)
+        return pred_rating
     
-    user_ratings = train_matrix.loc[user_id]
-    rated_items = user_ratings[user_ratings > 0].index.tolist()
-    unrated_items = train_matrix.columns.difference(rated_items)
+    def recommend(self, user, n, return_result=False):
+        rated_items = set(self.sparse[self.sparse['user'] == user]['item'])
+        all_items = set(self.items)
+        unrated_items = all_items - rated_items
+        rec_items = []
+        for item in unrated_items:
+            rating_pred = self.predict(user, item)
+            if rating_pred >= 0:
+                rec_items.append((item, rating_pred))
+        rec_items.sort(key=lambda x: x[1], reverse=True)
 
-    knn_model = knn(metric='cosine', algorithm='brute', n_neighbors=k_neighbors + 1)
-    knn_model.fit(item_user_matrix.values)
+        if return_result:
+            return rec_items[:n]
+        return  [item for item, rating in rec_items[:n]]
 
-    predictions = {}
+# def knnCF(user_id, n, ratings_df, k_neighbors=8):
+#     train_matrix = ratings_df.pivot_table(index='user', columns='item', values='rating').fillna(0)
 
-    for item in unrated_items:
-        if item not in item_user_matrix.index:
-            continue
+#     item_user_matrix = train_matrix.T
+    
+#     user_ratings = train_matrix.loc[user_id]
+#     rated_items = user_ratings[user_ratings > 0].index.tolist()
+#     unrated_items = train_matrix.columns.difference(rated_items)
 
-        item_idx = item_user_matrix.index.get_loc(item)
-        distances, indices = knn_model.kneighbors([item_user_matrix.iloc[item_idx]], n_neighbors=k_neighbors + 1)
+#     knn_model = knn(metric='cosine', algorithm='brute', n_neighbors=k_neighbors + 1)
+#     knn_model.fit(item_user_matrix.values)
 
-        neighbors = item_user_matrix.index[indices[0][1:]]
-        neighbor_ratings = user_ratings[neighbors]
-        neighbor_ratings = neighbor_ratings[neighbor_ratings > 0]
+#     predictions = {}
 
-        if len(neighbor_ratings) > 0:
-            predicted_rating = neighbor_ratings.mean()
-        else:
-            predicted_rating = user_ratings[user_ratings > 0].mean() if user_ratings[user_ratings > 0].any() else 2.5
+#     for item in unrated_items:
+#         if item not in item_user_matrix.index:
+#             continue
 
-        predictions[item] = predicted_rating
+#         item_idx = item_user_matrix.index.get_loc(item)
+#         distances, indices = knn_model.kneighbors([item_user_matrix.iloc[item_idx]], n_neighbors=k_neighbors + 1)
 
-    sorted_preds = sorted(predictions.items(), key=lambda x: x[1], reverse=True)
-    recommended_items = [item for item, _ in sorted_preds[:n]]
-    return recommended_items
+#         neighbors = item_user_matrix.index[indices[0][1:]]
+#         neighbor_ratings = user_ratings[neighbors]
+#         neighbor_ratings = neighbor_ratings[neighbor_ratings > 0]
+
+#         if len(neighbor_ratings) > 0:
+#             predicted_rating = neighbor_ratings.mean()
+#         else:
+#             predicted_rating = user_ratings[user_ratings > 0].mean() if user_ratings[user_ratings > 0].any() else 2.5
+
+#         predictions[item] = predicted_rating
+
+#     sorted_preds = sorted(predictions.items(), key=lambda x: x[1], reverse=True)
+#     recommended_items = [item for item, _ in sorted_preds[:n]]
+#     return recommended_items
 
 def dcpCF(user_id, n):
     """

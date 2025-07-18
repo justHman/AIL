@@ -4,7 +4,18 @@ from sklearn.metrics.pairwise import cosine_similarity
 import re
 
 
-def create_similarity_matrix(strings, index, columns, return_vector=False):
+def create_iiCF_simi_matrix(sparse):
+    sparse_norm = sparse.copy()
+    mean_ratings = sparse_norm.groupby('user')['rating'].mean()
+    sparse_norm['rating'] = sparse_norm.apply(
+                lambda row: row['rating'] - mean_ratings[row['user']],
+                axis=1
+    )
+    utility_norm = sparse_norm.pivot(index='item', columns='user', values='rating').fillna(0)
+    iiCF_simi_matrix = cosine_similarity(utility_norm)
+    return pd.DataFrame(iiCF_simi_matrix, index=utility_norm.index, columns=utility_norm.index), sparse_norm, utility_norm
+    
+def create_iiCB_simi_matrix(strings, index, columns):
     vectorizer = TfidfVectorizer()
     vecs = vectorizer.fit_transform(strings) 
 
