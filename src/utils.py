@@ -4,14 +4,12 @@ import os
 import json
 import numpy as np
 
-def get_items_rated_by_user(df, user_id, item_id_map):
-    user_rated = df[df['user'] == user_id][['item', 'rating']]
-    item_ids = user_rated['item'].to_numpy()
+def get_items_rated_by_user(df, user):
+    user_rated = df[df['user'] == user][['item', 'rating']]
+    items = user_rated['item'].to_numpy()
     ratings = user_rated['rating'].to_numpy()
 
-    item_indices = np.array([item_id_map[item] for item in item_ids])
-
-    return item_indices, ratings
+    return items, ratings
 
 def load_config():
     # Lấy đường dẫn tuyệt đối đến thư mục gốc project

@@ -42,10 +42,9 @@ class Ridge_iiCB:
         self.df = df
 
         self.items = df['item'].unique()
-        self.item_map = {item: i for i, item in enumerate(self.items)}
         
         self.users = df['user'].unique()
-        self.user_map = {user: i for i, user in enumerate(self.users)}
+        self.map_users = {user: i for i, user in enumerate(self.users)}
         
         self.X = None
         self.W = None
@@ -57,27 +56,33 @@ class Ridge_iiCB:
         self.W = np.zeros((vectors.shape[1], len(self.users))) # 83 x 33901
         self.b = np.zeros((1, len(self.users)))                # 1  x 33901
 
-        for i, user in enumerate(self.users):
-            id_items, ratings = get_items_rated_by_user(df, user, self.item_map)
-            X_train = self.X[id_items, :]
+        for user, id in self.map_users.items():
+            items, ratings = get_items_rated_by_user(self.df, user)   
+            X_train = self.X.loc[items, :]
 
             rg = Ridge(alpha=0.01, fit_intercept=True)
             rg.fit(X_train, ratings)
             
-            self.W[:, i] = rg.coef_
-            self.b[0, i] = rg.intercept_
+            self.W[:, id] = rg.coef_
+            self.b[0, id] = rg.intercept_
             
         self.y = self.X @ self.W + self.b
+        print('='*50, 'Train xong!', '='*50)
 
-    def predict(self, item, user_id):
-        return self.y[self.item_map[item], self.user_map[user_id]]
+    def predict(self, item, user):
+        if self.y is None:
+            return 
+        return self.y.loc[item, self.map_users[user]]
 
-    def reccomend(self, user_id, n, return_rating=False):
-        rated_items = set(self.df[self.df['user'] == user_id]['item'])
-        all_items = list(self.item_map.keys())
+    def reccomend(self, user, n, return_rating=False):
+        if self.y is None:
+            return
+        
+        rated_items = set(self.df[self.df['user'] == user]['item'])
+        all_items = list(self.items)
         unrated_items = [item for item in all_items if item not in rated_items]
 
-        item_scores = [(item, float(self.predict(item, user_id))) for item in unrated_items]
+        item_scores = [(item, float(self.predict(item, user))) for item in unrated_items]
 
         item_scores.sort(key=lambda x: x[1], reverse=True)
 
