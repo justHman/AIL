@@ -5,7 +5,9 @@ from sklearn.neighbors import NearestNeighbors as knn
 from sklearn.linear_model import Ridge
 import math
 from src.utils import load_config
-
+from sklearn.metrics import mean_absolute_error 
+from sklearn.metrics import mean_squared_error 
+from sklearn.metrics import r2_score 
 
 config = load_config()
 if not config:
@@ -82,7 +84,7 @@ class Ridge_iiCB:
         all_items = set(self.items)
         unrated_items = all_items - rated_items
 
-        item_scores = [(item, float(self.predict(item, user)), len(df[df['item'] == item])) for item in unrated_items]
+        item_scores = [(item, float(self.predict(item, user)), len(self.df[self.df['item'] == item])) for item in unrated_items]
 
         item_scores.sort(key=lambda x: (x[1], x[2]), reverse=True)
 
@@ -91,22 +93,28 @@ class Ridge_iiCB:
         return [item for item, rating, quantity in item_scores[:n]]
     
     def evaluate(self, df):
-        se = 0
-        cnt = 0
-        users = self.df['user'].unique()
-        for i, user in enumerate(users):
-            id_items, ratings = get_items_rated_by_user(df, user, self.item_map)
-            ratings_pred = self.y[id_items, i]
-            e = ratings - ratings_pred 
-            se += (e*e).sum(axis = 0)
-            cnt += e.size 
-        return math.sqrt(se/cnt)
+        if self.y is None:
+            return
+        
+        truth = []
+        predict = []
+        for user in self.users:
+            items, ratings = get_items_rated_by_user(df, user)
+            ratings_pred = self.predict(items, user)
+            truth.extend(ratings)
+            predict.extend(ratings_pred)
+
+        mae = mean_absolute_error(truth, predict)
+        mse = mean_squared_error(truth, predict)
+        r2 = r2_score(truth, predict)
+        rmse = np.sqrt(mse)
+
+        return mae, mse, rmse, r2
          
 class iiCB:
     def __init__(self,  df, sim_matrix=None, vectors=None):
         self.df = df
         self.sim_matrix = sim_matrix
-        self.vectors = vectors
 
         items = df['item'].unique()
         self.item_map = {item: i for i, item in enumerate(items)}
@@ -114,51 +122,14 @@ class iiCB:
         users = df['user'].unique()
         self.user_map = {user: i for i, user in enumerate(users)}
 
-        if vectors is not None:
-            d = vectors.shape[1]
-            self.W = np.zeros((d, len(users))) # 83 x 33901
-            self.b = np.zeros((1, len(users))) # 1 x 33901
-            for i, user in enumerate(users):
-                    id_items, ratings = get_items_rated_by_user(df, user, self.item_map)
-                    rg = Ridge(alpha=0.01, fit_intercept=True)
-                    Xhat = vectors[id_items, :]
-
-                    rg.fit(Xhat, ratings)
-                    self.W[:, i] = rg.coef_
-                    self.b[0, i] = rg.intercept_
-            
-            self.Yhat = self.vectors.dot(self.W) + self.b
-
-    def reccomend(self, user_id, n, return_result=False):
+    def reccomend(self, user, n, return_result=False):
         if self.sim_matrix is not None:
-            love_item = self.df[self.df['user'] == 2][['rating', 'item']].sort_values(by='rating', ascending=False)['item'].iloc[0]
+            love_item = self.df[self.df['user'] == user][['rating', 'item']].sort_values(by='rating', ascending=False)['item'].iloc[0]
             dic = self.df[love_item].sort_values(ascending=False)[1:n+1].to_dict()
             
             if return_result:
                 return dic
             return list(dic.keys()) 
-        
-        if self.vectors is not None:
-            '''
-            Hãy viết theo logic kiếm những user_id sản phẩm chưa rate xong dùng self.predict để rate. 
-            Xong sắp xếp giảm dần, lấy top n
-            '''
-            rated_items = set(self.df[self.df['user'] == user_id]['item'])
-            all_items = list(self.item_map.keys())
-            unrated_items = [item for item in all_items if item not in rated_items]
-
-            item_scores = [(item, float(self.predict(item, user_id))) for item in unrated_items]
-
-            item_scores.sort(key=lambda x: x[1], reverse=True)
-
-            if return_result:
-                return item_scores[:n]
-            return [item for item, rating in item_scores[:n]]
-
-    def predict(self, item, user_id):
-        return self.Yhat[self.item_map[item], self.user_map[user_id]]
-
-    
 
 # ===================================================================
 # 3. MÔ HÌNH LỌC CỘNG TÁC (COLLABORATIVE FILTERING)
