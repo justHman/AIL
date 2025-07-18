@@ -112,20 +112,26 @@ class Ridge_iiCB:
         return mae, mse, rmse, r2
          
 class iiCB:
-    def __init__(self,  df, sim_matrix=None, vectors=None):
+    def __init__(self, df, sim_matrix=None):
         self.df = df
         self.sim_matrix = sim_matrix
-
-        items = df['item'].unique()
-        self.item_map = {item: i for i, item in enumerate(items)}
         
         users = df['user'].unique()
         self.user_map = {user: i for i, user in enumerate(users)}
 
-    def reccomend(self, user, n, return_result=False):
+    def recommend(self, user, n, return_result=False):
         if self.sim_matrix is not None:
-            love_item = self.df[self.df['user'] == user][['rating', 'item']].sort_values(by='rating', ascending=False)['item'].iloc[0]
-            dic = self.df[love_item].sort_values(ascending=False)[1:n+1].to_dict()
+            item_total_counts = self.df.groupby('item')['rating'].count().reset_index()
+            item_total_counts.columns = ['item', 'total_count']
+
+            user_ratings = self.df[self.df['user'] == user][['item', 'rating']]
+
+            item_stats = pd.merge(user_ratings, item_total_counts, on='item')
+            item_stats_sorted = item_stats.sort_values(by=['rating', 'total_count'], ascending=False)
+
+            love_item = item_stats_sorted.iloc[0]['item']
+            # love_item = self.df[self.df['user'] == user][['rating', 'item']].sort_values(by='rating', ascending=False)['item'].iloc[0]
+            dic = self.sim_matrix[love_item].sort_values(ascending=False)[1:n+1].to_dict()
             
             if return_result:
                 return dic
@@ -193,4 +199,4 @@ if __name__ == '__main__':
     df = pd.read_csv('data\oversampling_data.csv')
     model = iiCB(df.tail(100), vectors=True)
     
-    model.reccomend(user_id=2, n=10)
+    model.recommend(user_id=2, n=10)

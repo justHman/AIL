@@ -5,7 +5,7 @@ from src.utils import load_config
 from src.data_processing import split_item, create_similarity_matrix, vectorize_items
 
 config = load_config()
-PATH_SIM_MATRIX = config['path_sim_matrix']\
+PATH_SIM_MATRIX = config['path_sim_matrix']
 
 class Recommender:
     def __init__(self, df):
@@ -30,32 +30,33 @@ class Recommender:
 
         print("Recommender is ready.")
     
-    def recommend(self, user_id, n=10, aglorithm='hybrid'):
-        if user_id not in self.users:
-            print(f"\nUser {user_id} is a new user. Applying cold-start strategy.")
+    def recommend(self, user, n=10, aglorithm='hybrid'):
+        if user not in self.users:
+            print(f"\nUser {user} is a new user. Applying cold-start strategy.")
             recs = models.PB(self.df, top_n=n)
             return {'recommendations': recs, 'strategy': 'cold_start_popular'}
 
         # === KỊCH BẢN 2: NGƯỜI DÙNG CŨ ===
-        print(f"\nUser {user_id} is an existing user. Applying {aglorithm} strategy.")
+        print(f"\nUser {user} is an existing user. Applying {aglorithm} strategy.")
         if aglorithm == 'dcpCF':
-            recs = models.dcpCF(user_id, n)
+            recs = models.dcpCF(user, n)
 
         elif aglorithm == 'knnCF':
-            recs = models.knnCF(user_id, n, self.df)
+            recs = models.knnCF(user, n, self.df)
             
         elif aglorithm == 'hybrid':
-            item_cf_recs = models.knnCF(user_id, self.df, n)
-            svd_recs = models.dcpCF(user_id, n)
+            item_cf_recs = models.knnCF(user, self.df, n)
+            svd_recs = models.dcpCF(user, n)
             recs = list(dict.fromkeys(svd_recs + item_cf_recs))[:n]
 
         elif aglorithm == 'iiCB':
-            model = models.iiCB(self.df, vectors=self.item_vectors)
-            recs = model.reccomend(user_id, n)
+            model = models.iiCB(self.df, sim_matrix=self.sim_matrix)
+            recs = model.recommend(user, n, return_result=False)
 
         elif aglorithm == 'ridge_iiCB':
             model = models.Ridge_iiCB(self.df)
             model.train(self.item_vectors)
+            recs = model.reccomend(user, n)
 
         return {'recommendations': recs, 'strategy': aglorithm}
 
