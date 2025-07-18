@@ -33,11 +33,9 @@ env/
 *.tflite
 
 # Dataset, export hoặc đầu ra tạm thời
-*.csv
 *.tsv
 *.xlsx
 *.xls
-*.json
 *.xml
 *.zip
 *.tar.gz

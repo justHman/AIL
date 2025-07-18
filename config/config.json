@@ -1,0 +1,5 @@
+{
+    "path_data": "data/captone_data.csv",
+    "path_sim_matrix": "data/similarity_matrix/item-item.csv",
+    "path_vectors": ""
+}
