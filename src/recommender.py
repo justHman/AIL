@@ -39,7 +39,9 @@ class Recommender:
         # === KỊCH BẢN 2: NGƯỜI DÙNG CŨ ===
         print(f"\nUser {user} is an existing user. Applying {aglorithm} strategy.")
         if aglorithm == 'dcpCF':
-            recs = models.dcpCF(user, n)
+            model = models.dcpCF()
+            evl = model.evaluate_with_split()
+            recs = model.recommend(user, n)
 
         elif aglorithm == 'knnCF':
             recs = models.knnCF(user, n, self.df)
@@ -58,7 +60,7 @@ class Recommender:
             model.train(self.item_vectors)
             recs = model.reccomend(user, n)
 
-        return {'recommendations': recs, 'strategy': aglorithm}
+        return {'recommendations': recs, 'strategy': aglorithm, 'evl': evl}
 
 if __name__ == '__main__':
     df = pd.read_csv('data\captone_data.csv')
