@@ -6,9 +6,9 @@ import re
 
 def create_iiCF_simi_matrix(sparse):
     sparse_norm = sparse.copy()
-    mean_ratings = sparse_norm.groupby('user')['rating'].mean()
+    mean_ratings = sparse_norm.groupby('item')['rating'].mean()
     sparse_norm['rating'] = sparse_norm.apply(
-                lambda row: row['rating'] - mean_ratings[row['user']],
+                lambda row: row['rating'] - mean_ratings[row['item']],
                 axis=1
     )
     utility_norm = sparse_norm.pivot(index='item', columns='user', values='rating').fillna(0)

@@ -11,7 +11,6 @@ class Recommender:
     def __init__(self, sparse):
         self.sparse = sparse
         self.users = sparse['user'].unique()
-        self.ratings = sparse['rating'].unique()
         self.items = sparse['item'].unique()
 
         # Các thành phần được tính toán trước

@@ -92,14 +92,14 @@ class Ridge_iiCB:
             return item_scores[:n]
         return [item for item, rating, quantity in item_scores[:n]]
     
-    def evaluate(self, df):
+    def evaluate(self, sparse, return_result=False):
         if self.y is None:
             return
         
         truth = []
         predict = []
         for user in self.users:
-            items, ratings = get_items_rated_by_user(df, user)
+            items, ratings = get_items_rated_by_user(sparse, user)
             ratings_pred = self.predict(items, user)
             truth.extend(ratings)
             predict.extend(ratings_pred)
@@ -108,6 +108,12 @@ class Ridge_iiCB:
         mse = mean_squared_error(truth, predict)
         r2 = r2_score(truth, predict)
         rmse = np.sqrt(mse)
+
+        if return_result:
+            return pd.DataFrame({
+                'truth': truth,
+                'predict': predict
+            }), mae, mse, rmse, r2
 
         return mae, mse, rmse, r2
          
@@ -143,6 +149,7 @@ class iiCB:
 class knnCF:
     def __init__(self, sparse, iiCF_simi_matrix, utility_norm):
         self.sparse = sparse
+        self.mean_ratings = self.sparse.groupby('item')['rating'].mean()
 
         self.users = sorted(sparse['user'].unique())
         self.user_map = {user: i for i, user in enumerate(self.users)}
@@ -153,7 +160,7 @@ class knnCF:
         self.utility_norm = utility_norm
 
 
-    def predict(self, user, item, k=2):
+    def predict(self, item, user, k=9):
         if item not in self.items or user not in self.users:
             return 0
         
@@ -174,13 +181,37 @@ class knnCF:
         pred_rating = np.dot(ratings, nearest_s.values) / (np.abs(nearest_s.values).sum() + 1e-8)
         return pred_rating
     
+    def evaluate(self, sparse, k=9, return_result=False):
+        truth = []
+        predict = []
+        for user in self.users:
+            items, ratings = get_items_rated_by_user(sparse, user)
+            if len(items) == 0:
+                continue
+
+            ratings_pred = [self.predict(item, user, k) + self.mean_ratings[item] for item in items]
+            truth.extend(ratings)
+            predict.extend(ratings_pred)
+
+        mae = mean_absolute_error(truth, predict)
+        mse = mean_squared_error(truth, predict)
+        r2 = r2_score(truth, predict)
+        rmse = np.sqrt(mse)
+
+        if return_result:
+            return pd.DataFrame({
+                'truth': truth,
+                'predict': predict
+            }), mae, mse, rmse, r2
+        return mae, mse, rmse, r2
+
     def recommend(self, user, n, return_result=False):
         rated_items = set(self.sparse[self.sparse['user'] == user]['item'])
         all_items = set(self.items)
         unrated_items = all_items - rated_items
         rec_items = []
         for item in unrated_items:
-            rating_pred = self.predict(user, item)
+            rating_pred = self.predict(item, user)
             if rating_pred >= 0:
                 rec_items.append((item, rating_pred))
         rec_items.sort(key=lambda x: x[1], reverse=True)
