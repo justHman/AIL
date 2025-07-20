@@ -1,0 +1,3 @@
+@echo off
+echo Starting AI Learning Recommendation System...
+streamlit run app.py
